@@ -1,50 +1,165 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>天気予報アプリ</title>
-    <link rel="stylesheet" href="style.css">
+    <title>気象庁API天気予報</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+        }
+
+        .weather-app {
+            max-width: 500px;
+            margin: 20px auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        header {
+            background-color: #007bff;
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        .location {
+            padding: 10px;
+            text-align: center;
+        }
+
+        .location select {
+            padding: 5px;
+            font-size: 14px;
+        }
+
+        .forecast {
+            padding: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f8f8f8;
+        }
+    </style>
 </head>
-
-
 <body>
-  
-    <form>
-        <select name="area" id="area">
-            <option value="130000">東京</option>
-            <option value="110000">埼玉</option>
-            <option value="014100">釧路・根室地方</option>
-        </select>
-    </form> 
-
-    <div id="location">
-     地域を選択してください
-    </div>
-    <div class="weatherForecast">
-        <div class="weather">
-            <div class="date"></div>
-            <img class="weatherImg">
-            <div class="temp"><span class="tempMin"></span><span class="tempMax"></span></div>
+    <div class="weather-app">
+        <header>
+            <h1>気象庁 天気予報</h1>
+        </header>
+        <div class="location">
+            <label for="region-select">地域を選択:</label>
+            <select id="region-select">
+                <option value="130000">東京地方</option>
+                <option value="110000">埼玉地方</option>
+                <option value="140100">釧路・根室地方</option>
+            </select>
+        </div>
+        <div class="forecast">
+            <table>
+                <thead>
+                    <tr>
+                        <th>日付</th>
+                        <th>天気</th>
+                        <th>最高気温</th>
+                        <th>最低気温</th>
+                    </tr>
+                </thead>
+                <tbody id="forecast-body">
+                    <!-- データを挿入 -->
+                </tbody>
+            </table>
         </div>
     </div>
-    <a href="https://www.jma.go.jp/bosai/forecast/" target="_blank">
-        <p id="updatedate"></p>
-    </a>
-    <script src="script.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const regionSelect = document.getElementById("region-select");
+            const forecastBody = document.getElementById("forecast-body");
+    
+            // 地域変更時のイベント
+            regionSelect.addEventListener("change", () => {
+                fetchWeather(regionSelect.value);
+            });
+    
+            // 気象庁APIからデータを取得
+            async function fetchWeather(areaCode) {
+                const apiUrl = `https://www.jma.go.jp/bosai/forecast/data/forecast/${areaCode}.json`;
+    
+                try {
+                    const response = await fetch(apiUrl);
+    
+                    if (!response.ok) {
+                        throw new Error("データの取得に失敗しました");
+                    }
+    
+                    const data = await response.json();
+                    console.log(data); // デバッグ用にAPIデータを表示
+    
+                    updateWeatherDisplay(data);
+                } catch (error) {
+                    console.error(error.message);
+                    alert("天気データの取得に失敗しました。");
+                }
+            }
+    
+            // 天気情報の表示
+            function updateWeatherDisplay(data) {
+                // 既存の行をクリア
+                forecastBody.innerHTML = "";
+    
+                // APIのデータ構造が正しいかを確認
+                console.log(data);
+    
+                // 仮に「timeSeries」があった場合の修正例
+                if (data && data[0] && data[0].timeSeries) {
+                    const forecasts = data[0].timeSeries;
+    
+                    forecasts.forEach(forecast => {
+                        const timePoints = forecast.timeDefines; // 時間帯の配列
+                        const weatherData = forecast.weather; // 天気情報の配列
+    
+                        timePoints.forEach((time, index) => {
+                            const row = document.createElement("tr");
+                            const date = new Date(time).toLocaleDateString("ja-JP"); // 日付を整形
+    
+                            // 天気、最高気温、最低気温を取得
+                            const weather = weatherData[index] || "N/A";
+                            const maxTemp = forecast.temperatures && forecast.temperatures[index]?.max || "N/A";
+                            const minTemp = forecast.temperatures && forecast.temperatures[index]?.min || "N/A";
+    
+                            row.innerHTML = `
+                                <td>${date}</td>
+                                <td>${weather}</td>
+                                <td>${maxTemp}°C</td>
+                                <td>${minTemp}°C</td>
+                            `;
+                            forecastBody.appendChild(row);
+                        });
+                    });
+                } else {
+                    alert("予報データが正しく取得できませんでした。");
+                }
+            }
+    
+            // 初期データ表示
+            fetchWeather(regionSelect.value);
+        });
+    </script>
 </body>
-
-<script>
-    // 東京(130000)の予報を取得
-let url = "https://www.jma.go.jp/bosai/forecast/data/forecast/130000.json";
-
-fetch(url)
-    .then(function(response) {
-        return response.json();
-    })
-    .then(function(weather) {
-        console.log(weather);
-    });
-</script>
 </html>
