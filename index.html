@@ -99,64 +99,62 @@
     
             // 気象庁APIからデータを取得
             async function fetchWeather(areaCode) {
-                const apiUrl = `https://www.jma.go.jp/bosai/forecast/data/forecast/${areaCode}.json`;
-    
-                try {
-                    const response = await fetch(apiUrl);
-    
-                    if (!response.ok) {
-                        throw new Error("データの取得に失敗しました");
-                    }
-    
-                    const data = await response.json();
-                    console.log(data); // デバッグ用にAPIデータを表示
-    
-                    updateWeatherDisplay(data);
-                } catch (error) {
-                    console.error(error.message);
-                    alert("天気データの取得に失敗しました。");
-                }
+    const apiUrl = `https://www.jma.go.jp/bosai/forecast/data/forecast/${areaCode}.json`;
+
+    try {
+        const response = await fetch(apiUrl);
+
+        if (!response.ok) {
+            throw new Error(`HTTPエラー: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log("APIレスポンス:", data); // デバッグ用ログ
+
+        updateWeatherDisplay(data);
+    } catch (error) {
+        console.error("データ取得エラー:", error);
+        alert(`天気データの取得に失敗しました: ${error.message}`);
+    }
+}
+function updateWeatherDisplay(data) {
+    forecastBody.innerHTML = "";
+
+    if (data && Array.isArray(data)) {
+        const forecasts = data[0]?.timeSeries || [];
+
+        forecasts.forEach((forecast, i) => {
+            if (forecast.areas && forecast.timeDefines) {
+                const timePoints = forecast.timeDefines; // 時間帯の配列
+                const areas = forecast.areas[0]; // 最初の地域データを取得
+                const weatherData = areas?.weathers || [];
+                const maxTemps = areas?.temps?.max || [];
+                const minTemps = areas?.temps?.min || [];
+
+                timePoints.forEach((time, index) => {
+                    const row = document.createElement("tr");
+                    const date = new Date(time).toLocaleDateString("ja-JP");
+
+                    const weather = weatherData[index] || "N/A";
+                    const maxTemp = maxTemps[index] || "N/A";
+                    const minTemp = minTemps[index] || "N/A";
+
+                    row.innerHTML = `
+                        <td>${date}</td>
+                        <td>${weather}</td>
+                        <td>${maxTemp}°C</td>
+                        <td>${minTemp}°C</td>
+                    `;
+                    forecastBody.appendChild(row);
+                });
             }
-    
-            // 天気情報の表示
-            function updateWeatherDisplay(data) {
-                // 既存の行をクリア
-                forecastBody.innerHTML = "";
-    
-                // APIのデータ構造が正しいかを確認
-                console.log(data);
-    
-                // 仮に「timeSeries」があった場合の修正例
-                if (data && data[0] && data[0].timeSeries) {
-                    const forecasts = data[0].timeSeries;
-    
-                    forecasts.forEach(forecast => {
-                        const timePoints = forecast.timeDefines; // 時間帯の配列
-                        const weatherData = forecast.weather; // 天気情報の配列
-    
-                        timePoints.forEach((time, index) => {
-                            const row = document.createElement("tr");
-                            const date = new Date(time).toLocaleDateString("ja-JP"); // 日付を整形
-    
-                            // 天気、最高気温、最低気温を取得
-                            const weather = weatherData[index] || "N/A";
-                            const maxTemp = forecast.temperatures && forecast.temperatures[index]?.max || "N/A";
-                            const minTemp = forecast.temperatures && forecast.temperatures[index]?.min || "N/A";
-    
-                            row.innerHTML = `
-                                <td>${date}</td>
-                                <td>${weather}</td>
-                                <td>${maxTemp}°C</td>
-                                <td>${minTemp}°C</td>
-                            `;
-                            forecastBody.appendChild(row);
-                        });
-                    });
-                } else {
-                    alert("予報データが正しく取得できませんでした。");
-                }
-            }
-    
+        });
+    } else {
+        alert("予報データが正しく取得できませんでした。");
+    }
+}
+
+
             // 初期データ表示
             fetchWeather(regionSelect.value);
         });
